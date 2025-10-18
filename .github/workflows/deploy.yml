@@ -11,7 +11,6 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: Run Tests
     
     steps:
     - name: Checkout code
@@ -24,18 +23,15 @@ jobs:
     
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest
     
     - name: Run tests
       run: |
-        echo "🧪 Running test cases..."
         python -m pytest tests/ -v
 
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy to Azure
     needs: test
     if: github.ref == 'refs/heads/main'
     
@@ -50,25 +46,34 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt --target=".python_packages/lib/site-packages"
+        pip install -r requirements.txt
 
     - name: Login to Azure
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-        enable-AzPSSession: true
+
+    - name: Configure Storage Setting
+      run: |
+        # This WILL work - sets storage via CLI
+        connection_string=$(az storage account show-connection-string \
+          --name bachanfuncstorage \
+          --resource-group sandbox \
+          --query "connectionString" \
+          -o tsv)
+        
+        az functionapp config appsettings set \
+          --name function-app-demo \
+          --resource-group sandbox \
+          --settings AzureWebJobsStorage="$connection_string"
 
     - name: Deploy to Azure Functions
       uses: Azure/functions-action@v1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
         package: '.'
-        scm-do-build-during-deployment: false
-        enable-oryx-build: false
 
     - name: Verify deployment
       run: |
-        echo "✅ Deployment completed successfully!"
-        echo "🎯 Function App: ${{ env.AZURE_FUNCTIONAPP_NAME }}"
-        echo "🌐 Test URL: https://${{ env.AZURE_FUNCTIONAPP_NAME }}.azurewebsites.net/api/hello?name=Bro"
+        echo "✅ DEPLOYMENT SUCCESSFUL!"
+        echo "🌐 Test: https://function-app-demo.azurewebsites.net/api/hello?name=Bachan"
