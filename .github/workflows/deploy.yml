@@ -32,7 +32,7 @@ jobs:
     
     - name: Run tests
       run: |
-        echo "🧪 Running test cases..."
+        echo "🧪 Running all test cases..."
         python -m pytest tests/ -v
       continue-on-error: false
 
