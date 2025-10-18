@@ -1,18 +1,42 @@
-name: Deploy to Azure Functions
+name: Deploy Python Azure Function
 
 on:
   push:
     branches: [ main ]
-  # Only deploy when tests pass - we'll add this condition later
+  pull_request:
+    branches: [ main ]
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'function-app-demo'
+  AZURE_FUNCTIONAPP_NAME: 'function-app-demo' 
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.'
   PYTHON_VERSION: '3.9'
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest
+    
+    - name: Run tests
+      run: |
+        python -m pytest tests/ -v
+
   deploy:
     runs-on: ubuntu-latest
-    # We'll add the test dependency later
+    needs: test
+    if: github.ref == 'refs/heads/main'
     
     steps:
     - name: Checkout code
@@ -32,5 +56,5 @@ jobs:
       uses: Azure/functions-action@v1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        package: '.'
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
         publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
